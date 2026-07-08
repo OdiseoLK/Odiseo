@@ -124,6 +124,7 @@ export interface SiteSettings {
   tagline: string;
   now_banner?: string;
   hero_image?: string;
+  theme_video?: string;
   footer_quote: string;
   socials: { instagram?: string; github?: string; discord?: string; email?: string; youtube?: string };
   about: { photo_url?: string; bio: string; skills: SkillBar[]; experience: ExperienceItem[] };
