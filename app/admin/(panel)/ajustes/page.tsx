@@ -47,6 +47,7 @@ export default function AdminSettings() {
           <h2 className="font-display text-sm font-bold uppercase tracking-wider text-electric">Identidad</h2>
           <TextField label="Tagline (aparece en el hero)" value={settings.tagline} onChange={(v) => set({ tagline: v })} />
           <TextField label="Banner «Ahora mismo» (bajo el menú)" value={settings.now_banner ?? ''} onChange={(v) => set({ now_banner: v })} hint="Una línea sobre lo que estás haciendo esta semana. Déjalo vacío para ocultar el banner." />
+          <TextField label="Música del sitio (YouTube)" value={settings.theme_video ?? ''} onChange={(v) => set({ theme_video: v })} hint="Pega uno o varios links de YouTube (separados por comas, suenan en cadena) o la ruta de un MP3 propio (ej. /audio/tema.mp3). Vacío = tema por defecto." />
           <ImageUpload label="Imagen de portada del inicio (hero)" value={settings.hero_image ?? null} onChange={(v) => set({ hero_image: v ?? '' })} folder="site" />
           <TextField label="Frase del footer" value={settings.footer_quote} onChange={(v) => set({ footer_quote: v })} />
         </section>

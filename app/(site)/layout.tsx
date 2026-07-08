@@ -9,7 +9,7 @@ import { getSettings } from '@/lib/data';
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const settings = await getSettings();
   return (
-    <MusicProvider>
+    <MusicProvider videoUrl={settings.theme_video}>
       <a href="#contenido" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-electric focus:px-4 focus:py-2 focus:text-ink">
         Saltar al contenido
       </a>

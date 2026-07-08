@@ -14,12 +14,35 @@ declare global {
   }
 }
 
-const THEME_VIDEO_ID = '_AAdae7diOU'; // "I Really Want To Stay At Your House" (cover)
+const DEFAULT_VIDEO_ID = '_AAdae7diOU'; // "I Really Want To Stay At Your House" (cover)
+
+/** Extrae el ID de cualquier formato de link de YouTube (o acepta el ID directo). */
+function extractYouTubeId(input?: string): string | null {
+  if (!input) return null;
+  const v = input.trim();
+  const m = v.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  if (m) return m[1];
+  if (/^[\w-]{10,12}$/.test(v)) return v;
+  return null;
+}
+
+const isAudioFile = (v: string) => /\.(mp3|ogg|wav|m4a)(\?.*)?$/i.test(v.trim());
+
+/** Interpreta el ajuste: lista separada por comas/saltos → pista(s) de audio o playlist de YouTube. */
+function parseMusicSetting(input?: string): { audio: string[]; ytIds: string[] } {
+  const tokens = (input ?? '').split(/[\n,]+/).map((t) => t.trim()).filter(Boolean);
+  const audio = tokens.filter(isAudioFile);
+  const ytIds = tokens.map(extractYouTubeId).filter(Boolean) as string[];
+  return { audio, ytIds };
+}
 
 type MusicStatus = 'idle' | 'playing' | 'paused';
 type SynthRig = { ctx: AudioContext; master: GainNode };
 
-const MusicCtx = createContext<{ status: MusicStatus; toggle: () => void }>({ status: 'idle', toggle: () => {} });
+const MusicCtx = createContext<{ status: MusicStatus; toggle: () => void; autoStart: () => void }>({
+  status: 'idle', toggle: () => {}, autoStart: () => {},
+});
+const setPref = (v: 'on' | 'off') => { try { localStorage.setItem('odiseo-music', v); } catch {} };
 export const useMusic = () => useContext(MusicCtx);
 
 /**
@@ -27,7 +50,12 @@ export const useMusic = () => useContext(MusicCtx);
  * respaldo WebAudio) vive en el layout, así la canción arranca en la intro
  * y continúa sonando mientras se navega por todo el sitio.
  */
-export default function MusicProvider({ children }: { children: React.ReactNode }) {
+export default function MusicProvider({ children, videoUrl }: { children: React.ReactNode; videoUrl?: string }) {
+  const { audio: audioTracks, ytIds } = parseMusicSetting(videoUrl);
+  const videoId = ytIds[0] ?? DEFAULT_VIDEO_ID;
+  const playlist = ytIds.length > 1 ? ytIds.join(',') : videoId;
+  const audioEl = useRef<HTMLAudioElement | null>(null);
+  const audioIdx = useRef(0);
   const [status, setStatus] = useState<MusicStatus>('idle');
   const box = useRef<HTMLDivElement>(null);
   const yt = useRef<{ p: YTPlayer | null; ready: boolean; failed: boolean; pending: boolean }>({
@@ -35,8 +63,9 @@ export default function MusicProvider({ children }: { children: React.ReactNode 
   });
   const synth = useRef<SynthRig | null>(null);
 
-  // Cargar el reproductor oculto de YouTube una sola vez
+  // Cargar el reproductor oculto de YouTube una sola vez (si no hay MP3 propios)
   useEffect(() => {
+    if (audioTracks.length > 0) return;
     let cancelled = false;
 
     const startYt = () => {
@@ -48,8 +77,8 @@ export default function MusicProvider({ children }: { children: React.ReactNode 
       if (cancelled || yt.current.p || !box.current || !window.YT?.Player) return;
       try {
         yt.current.p = new window.YT.Player(box.current, {
-          width: '1', height: '1', videoId: THEME_VIDEO_ID,
-          playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1, rel: 0, loop: 1, playlist: THEME_VIDEO_ID },
+          width: '1', height: '1', videoId,
+          playerVars: { autoplay: 0, controls: 0, disablekb: 1, playsinline: 1, rel: 0, loop: 1, playlist },
           events: {
             onReady: () => {
               yt.current.ready = true;
@@ -119,15 +148,25 @@ export default function MusicProvider({ children }: { children: React.ReactNode 
     } catch {}
   };
 
-  const toggle = () => {
-    if (status === 'playing') {
-      if (synth.current) { stopSynth(); setStatus('paused'); return; }
-      try { yt.current.p?.pauseVideo(); } catch {}
-      yt.current.pending = false;
-      setStatus('paused');
-      return;
+  const playAudioTrack = (i: number) => {
+    const src = audioTracks[i % audioTracks.length];
+    let el = audioEl.current;
+    if (!el) {
+      el = new Audio();
+      el.volume = 0.6;
+      el.addEventListener('ended', () => {
+        audioIdx.current = (audioIdx.current + 1) % audioTracks.length;
+        playAudioTrack(audioIdx.current);
+      });
+      audioEl.current = el;
     }
-    // idle o pausada → reproducir
+    if (!el.src.endsWith(src)) el.src = src;
+    el.loop = audioTracks.length === 1;
+    el.play().then(() => setStatus('playing')).catch(() => setStatus('idle'));
+  };
+
+  const play = () => {
+    if (audioTracks.length > 0) { playAudioTrack(audioIdx.current); return; }
     if (yt.current.ready && !yt.current.failed) {
       const p = yt.current.p;
       try { p?.unMute(); p?.setVolume(58); p?.playVideo(); setStatus('playing'); return; } catch {}
@@ -136,10 +175,35 @@ export default function MusicProvider({ children }: { children: React.ReactNode 
     startSynth();
   };
 
-  useEffect(() => () => stopSynth(), []);
+  const toggle = () => {
+    if (status === 'playing') {
+      if (audioEl.current && !audioEl.current.paused) { audioEl.current.pause(); setStatus('paused'); setPref('off'); return; }
+      if (synth.current) { stopSynth(); setStatus('paused'); setPref('off'); return; }
+      try { yt.current.p?.pauseVideo(); } catch {}
+      yt.current.pending = false;
+      setStatus('paused');
+      setPref('off');
+      return;
+    }
+    setPref('on');
+    play();
+  };
+
+  /** Arranque automático (p. ej. al dar "Entrar al estudio"): respeta si el visitante la apagó antes. */
+  const autoStart = () => {
+    if (status !== 'idle') return;
+    try { if (localStorage.getItem('odiseo-music') === 'off') return; } catch {}
+    play();
+  };
+
+  useEffect(() => () => {
+    stopSynth();
+    try { audioEl.current?.pause(); } catch {}
+    audioEl.current = null;
+  }, []);
 
   return (
-    <MusicCtx.Provider value={{ status, toggle }}>
+    <MusicCtx.Provider value={{ status, toggle, autoStart }}>
       <div ref={box} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden" />
       {children}
       {/* Control flotante dentro del sitio */}

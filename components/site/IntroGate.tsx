@@ -15,7 +15,7 @@ type LayerFn = (depth: number) => React.CSSProperties | undefined;
  */
 export default function IntroGate({ gameTitle, phrase }: { gameTitle: string; phrase: string }) {
   const [show, setShow] = useState(true);
-  const { status: musicStatus, toggle: toggleSound } = useMusic();
+  const { status: musicStatus, toggle: toggleSound, autoStart } = useMusic();
   const sound = musicStatus === 'playing';
   const [scene, setScene] = useState<0 | 1>(0); // 0 = escuela, 1 = ciudad
   const reduced = useReducedMotion();
@@ -54,7 +54,8 @@ export default function IntroGate({ gameTitle, phrase }: { gameTitle: string; ph
 
   const enter = () => {
     try { sessionStorage.setItem('odiseo-intro', '1'); } catch {}
-    setShow(false); // la música continúa dentro del sitio
+    autoStart(); // el clic de entrada cuenta como permiso del navegador
+    setShow(false);
   };
 
   useEffect(() => {

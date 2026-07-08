@@ -353,6 +353,7 @@ insert into public.tags (name, slug) values
 insert into public.site_settings (id, data) values (1, '{
   "tagline": "Desarrollador de videojuegos, creador de contenido y apasionado por el cine.",
   "hero_image": "/covers/hero-odiseo.jpg",
+  "theme_video": "https://www.youtube.com/watch?v=_AAdae7diOU",
   "now_banner": "Esta semana: puliendo el sistema de baterías de la linterna en El Velador 🔦",
   "footer_quote": "Creating worlds, one game at a time.",
   "socials": {
