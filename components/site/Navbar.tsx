@@ -64,7 +64,7 @@ export default function Navbar() {
       <header
         className={cn(
           'fixed inset-x-0 top-0 z-50 transition-all duration-300',
-          scrolled ? 'border-b border-white/[0.07] bg-ink/70 backdrop-blur-xl' : 'bg-transparent'
+          scrolled ? 'border-b border-white/[0.07] bg-ink/85 backdrop-blur-md' : 'bg-transparent'
         )}
       >
         <nav className="container-site flex h-16 items-center justify-between gap-4">
@@ -77,8 +77,8 @@ export default function Navbar() {
                   <Link
                     href={l.href}
                     className={cn(
-                      'rounded-lg px-3 py-2 text-sm transition',
-                      active ? 'text-white bg-white/[0.07]' : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                      'relative px-3 py-2 text-[13px] tracking-wide transition after:absolute after:inset-x-3 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-electric after:transition-transform',
+                      active ? 'text-white after:scale-x-100' : 'text-zinc-400 hover:text-white hover:after:scale-x-100'
                     )}
                   >
                     {l.label}
@@ -90,7 +90,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-400 transition hover:border-white/20 hover:text-zinc-200 sm:flex"
+              className="hidden items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-400 transition hover:border-white/20 hover:text-zinc-200 sm:flex"
               aria-label="Buscar en el sitio"
             >
               <Search size={15} />
@@ -115,7 +115,7 @@ export default function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden border-b border-white/[0.07] bg-ink/90 backdrop-blur-xl lg:hidden"
+              className="overflow-hidden border-b border-white/[0.07] bg-[#06080f]/95 lg:hidden"
             >
               <ul className="container-site grid gap-1 py-4">
                 {LINKS.map((l) => (

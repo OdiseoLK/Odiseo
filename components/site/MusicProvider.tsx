@@ -58,15 +58,18 @@ export default function MusicProvider({ children, videoUrl }: { children: React.
   const audioIdx = useRef(0);
   const [status, setStatus] = useState<MusicStatus>('idle');
   const box = useRef<HTMLDivElement>(null);
-  const yt = useRef<{ p: YTPlayer | null; ready: boolean; failed: boolean; pending: boolean }>({
-    p: null, ready: false, failed: false, pending: false,
+  const yt = useRef<{ p: YTPlayer | null; ready: boolean; failed: boolean; pending: boolean; loading: boolean }>({
+    p: null, ready: false, failed: false, pending: false, loading: false,
   });
   const synth = useRef<SynthRig | null>(null);
 
-  // Cargar el reproductor oculto de YouTube una sola vez (si no hay MP3 propios)
-  useEffect(() => {
-    if (audioTracks.length > 0) return;
-    let cancelled = false;
+  /**
+   * Carga el reproductor de YouTube SOLO cuando alguien pide música por primera vez.
+   * Así una visita normal no descarga ~1 MB de JavaScript que quizá nunca use.
+   */
+  const ensurePlayer = () => {
+    if (audioTracks.length > 0 || yt.current.p || yt.current.loading || yt.current.failed) return;
+    yt.current.loading = true;
 
     const startYt = () => {
       const p = yt.current.p; if (!p) return;
@@ -74,7 +77,7 @@ export default function MusicProvider({ children, videoUrl }: { children: React.
     };
 
     const init = () => {
-      if (cancelled || yt.current.p || !box.current || !window.YT?.Player) return;
+      if (yt.current.p || !box.current || !window.YT?.Player) return;
       try {
         yt.current.p = new window.YT.Player(box.current, {
           width: '1', height: '1', videoId,
@@ -93,22 +96,19 @@ export default function MusicProvider({ children, videoUrl }: { children: React.
       } catch { yt.current.failed = true; }
     };
 
-    if (window.YT?.Player) init();
-    else {
-      const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => { prev?.(); init(); };
-      if (!document.getElementById('yt-iframe-api')) {
-        const tag = document.createElement('script');
-        tag.id = 'yt-iframe-api'; tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
+    if (window.YT?.Player) { init(); return; }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { prev?.(); init(); };
+    if (!document.getElementById('yt-iframe-api')) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-iframe-api'; tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
     }
-    return () => {
-      cancelled = true;
-      try { yt.current.p?.destroy(); } catch {}
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      yt.current = { p: null, ready: false, failed: false, pending: false };
-    };
+  };
+
+  // Limpieza al desmontar
+  useEffect(() => () => {
+    try { yt.current.p?.destroy(); } catch {}
   }, []);
 
   // Respaldo: ambiente de viento + dron grave por WebAudio (si YouTube falla)
@@ -171,7 +171,7 @@ export default function MusicProvider({ children, videoUrl }: { children: React.
       const p = yt.current.p;
       try { p?.unMute(); p?.setVolume(58); p?.playVideo(); setStatus('playing'); return; } catch {}
     }
-    if (!yt.current.failed) { yt.current.pending = true; setStatus('playing'); return; }
+    if (!yt.current.failed) { yt.current.pending = true; setStatus('playing'); ensurePlayer(); return; }
     startSynth();
   };
 

@@ -12,10 +12,17 @@ export default function HeroScene() {
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
-    const onMove = (e: PointerEvent) => {
+    let pending = false, mx = 0, my = 0;
+    const apply = () => {
+      pending = false;
       const el = root.current; if (!el) return;
-      el.style.setProperty('--hx', String(e.clientX / window.innerWidth - 0.5));
-      el.style.setProperty('--hy', String(e.clientY / window.innerHeight - 0.5));
+      el.style.setProperty('--hx', String(mx));
+      el.style.setProperty('--hy', String(my));
+    };
+    const onMove = (e: PointerEvent) => {
+      mx = e.clientX / window.innerWidth - 0.5;
+      my = e.clientY / window.innerHeight - 0.5;
+      if (!pending) { pending = true; requestAnimationFrame(apply); }
     };
     window.addEventListener('pointermove', onMove, { passive: true });
     return () => window.removeEventListener('pointermove', onMove);
@@ -27,12 +34,19 @@ export default function HeroScene() {
 
   return (
     <div ref={root} aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      {/* Resplandor central (luz del eclipse llenando la escena) */}
-      <div className="absolute left-[62%] top-[38%] h-[46rem] w-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-electric/[0.07] blur-[120px]" />
-      <div className="absolute left-[60%] top-[42%] h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-nebula/[0.08] blur-[110px]" />
+      {/* Resplandor central (degradados radiales, sin filtro) */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: [
+            'radial-gradient(circle 40rem at 62% 38%, rgba(79,140,255,0.08), transparent 62%)',
+            'radial-gradient(circle 26rem at 60% 42%, rgba(139,108,240,0.09), transparent 62%)',
+          ].join(','),
+        }}
+      />
 
       {/* Montañas lejanas */}
-      <div className="absolute inset-x-0 bottom-24 h-[38vh] will-change-transform" style={layer(5)}>
+      <div className="absolute inset-x-0 bottom-24 h-[38vh]" style={layer(5)}>
         <svg className="h-full w-full" viewBox="0 0 1440 320" preserveAspectRatio="xMidYMax slice">
           <path d="M0 320 L0 210 L170 130 L300 205 L460 105 L610 190 L780 120 L930 200 L1090 128 L1250 196 L1440 140 L1440 320 Z" fill="#070c19" />
           <path d="M430 125 L460 105 L495 128 Z" fill="#111a30" opacity=".8" />
@@ -40,7 +54,7 @@ export default function HeroScene() {
       </div>
 
       {/* Ciudad en ruinas */}
-      <div className="absolute inset-x-0 bottom-[5.5rem] h-[30vh] will-change-transform" style={layer(11)}>
+      <div className="absolute inset-x-0 bottom-[5.5rem] h-[30vh]" style={layer(11)}>
         <svg className="h-full w-full" viewBox="0 0 1440 260" preserveAspectRatio="xMidYMax slice">
           <g fill="#0a1020">
             <path d="M40 260 L40 130 L78 118 L86 60 L102 118 L128 128 L128 260 Z" />
@@ -70,10 +84,10 @@ export default function HeroScene() {
         </svg>
       </div>
 
-      {/* Niebla volumétrica */}
-      <div className="fog-a absolute bottom-28 left-[-12%] h-40 w-[70%] rounded-full bg-[#7f9cc9]/[0.09] blur-3xl will-change-transform" />
-      <div className="fog-b absolute bottom-20 right-[-14%] h-44 w-[64%] rounded-full bg-nebula/[0.08] blur-3xl will-change-transform" />
-      <div className="fog-c absolute bottom-36 left-[22%] h-32 w-[52%] rounded-full bg-electric/[0.06] blur-3xl will-change-transform" />
+      {/* Niebla volumétrica (radial-gradient: se desplaza sin repintar desenfoques) */}
+      <div className="fog-a absolute inset-x-0 bottom-24 h-48" style={{ backgroundImage: 'radial-gradient(ellipse 60% 100% at 22% 60%, rgba(127,156,201,0.10), transparent 70%)' }} />
+      <div className="fog-b absolute inset-x-0 bottom-16 h-52" style={{ backgroundImage: 'radial-gradient(ellipse 55% 100% at 82% 55%, rgba(139,108,240,0.09), transparent 70%)' }} />
+      <div className="fog-c absolute inset-x-0 bottom-32 h-40" style={{ backgroundImage: 'radial-gradient(ellipse 50% 100% at 48% 60%, rgba(79,140,255,0.07), transparent 70%)' }} />
 
       {/* Suelo reflectante (mojado) */}
       <div className="absolute inset-x-0 bottom-0 h-28">
@@ -92,7 +106,7 @@ export default function HeroScene() {
           </svg>
         </div>
         {/* brillo del eclipse sobre el agua */}
-        <div className="absolute left-[62%] top-2 h-16 w-72 -translate-x-1/2 rounded-full bg-electric/15 blur-2xl" />
+        <div className="absolute left-[62%] top-2 h-16 w-72 -translate-x-1/2" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(79,140,255,0.22), transparent 70%)' }} />
         <div className="sheen absolute left-0 top-6 h-px w-56 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       </div>
 

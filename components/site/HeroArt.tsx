@@ -23,21 +23,13 @@ export default function HeroArt({ cover, title }: { cover: string; title: string
     <div ref={box} onPointerMove={onMove} onPointerLeave={onLeave} className="relative mx-auto w-full max-w-[400px] [perspective:1100px]">
       {/* Eclipse */}
       <div aria-hidden className="absolute left-1/2 top-1/2 h-[125%] w-[125%] -translate-x-1/2 -translate-y-1/2">
-        <div className="absolute inset-0 rounded-full bg-electric/[0.09] blur-[70px]" />
+        <div className="absolute inset-0 rounded-full" style={{ backgroundImage: 'radial-gradient(circle at center, rgba(79,140,255,0.16), transparent 68%)' }} />
         <div
           className="absolute inset-[6%] animate-[spin_46s_linear_infinite] rounded-full opacity-80 motion-reduce:animate-none"
           style={{
             background: 'conic-gradient(from 210deg, transparent 0deg, rgba(79,140,255,.9) 50deg, rgba(139,108,240,.85) 120deg, transparent 200deg, rgba(79,140,255,.35) 300deg, transparent 360deg)',
             WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2px))',
             mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2px))',
-          }}
-        />
-        <div
-          className="absolute inset-[6%] animate-[spin_46s_linear_infinite] rounded-full opacity-60 blur-md motion-reduce:animate-none"
-          style={{
-            background: 'conic-gradient(from 210deg, transparent 0deg, rgba(79,140,255,.9) 50deg, rgba(139,108,240,.85) 120deg, transparent 200deg)',
-            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 7px))',
-            mask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 7px))',
           }}
         />
         <div className="absolute inset-[9%] rounded-full bg-[#040610]/80" />

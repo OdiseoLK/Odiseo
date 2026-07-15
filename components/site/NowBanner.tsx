@@ -15,7 +15,7 @@ export default function NowBanner({ text }: { text: string }) {
   if (!text.trim() || hidden) return null;
 
   return (
-    <div className="fixed inset-x-0 top-16 z-40 border-b border-electric/15 bg-ink/70 backdrop-blur-md">
+    <div className="fixed inset-x-0 top-16 z-40 border-b border-electric/15 bg-[#070a12]">
       <div className="container-site flex items-center gap-3 py-2">
         <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-electric/50 motion-reduce:animate-none" />

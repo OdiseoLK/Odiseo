@@ -26,6 +26,13 @@ export default function Atmosphere({ dense = false, fixed = false }: { dense?: b
     let scroll = 0;
 
     const Z_NEAR = 0.06, Z_FAR = 1, FOCAL = 0.22, SPREAD = 1.9;
+    let quality = 1;              // se reduce solo si el equipo va lento
+    let frames = 0, lastCheck = performance.now();
+    // Colores precalculados: evita crear cientos de strings por frame
+    const PALETTE = Array.from({ length: 12 }, (_, i) =>
+      `rgba(${180 + i * 5}, ${205 + i * 3}, 255, ${(0.16 + i * 0.07).toFixed(2)})`);
+    const PALETTE_N = Array.from({ length: 12 }, (_, i) =>
+      `rgba(${170 + i * 5}, ${160 + i * 4}, 255, ${(0.16 + i * 0.07).toFixed(2)})`);
     type Star = { x: number; y: number; z: number; tw: number; hue: number; base: number };
     let stars: Star[] = [];
 
@@ -43,12 +50,12 @@ export default function Atmosphere({ dense = false, fixed = false }: { dense?: b
     });
 
     const resize = () => {
-      const dpr = Math.min(1.75, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.4, window.devicePixelRatio || 1);
       w = canvas.offsetWidth; h = canvas.offsetHeight;
       canvas.width = w * dpr; canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.floor((w * h) / (dense ? 5200 : 7600));
-      stars = Array.from({ length: count }, () => spawn(false));
+      const count = Math.floor((w * h) / (dense ? 11000 : 15000)) * quality;
+      stars = Array.from({ length: Math.max(24, count) }, () => spawn(false));
     };
 
     const onMove = (e: MouseEvent) => {
@@ -74,19 +81,12 @@ export default function Atmosphere({ dense = false, fixed = false }: { dense?: b
         const py = cy + (s.y + cam.y * (0.35 + 0.45 / (s.z + 0.35))) * k * (h / 2) * 0.42;
         if (px < -12 || px > w + 12 || py < -12 || py > h + 12) continue;
         const depth = 1 - (s.z - Z_NEAR) / (Z_FAR - Z_NEAR); // 0 lejos → 1 cerca
-        const twinkle = animate ? 0.6 + 0.4 * Math.sin(t * 2 + s.tw) : 0.85;
-        const alpha = (0.14 + 0.6 * depth) * twinkle;
+        const twinkle = animate ? 0.65 + 0.35 * Math.sin(t * 2 + s.tw) : 0.85;
+        const level = Math.min(11, Math.max(0, Math.round(depth * twinkle * 11)));
         const r = s.base * (0.35 + 1.5 * depth);
-        if (depth > 0.78) {
-          ctx.beginPath();
-          ctx.fillStyle = `hsla(${s.hue}, 95%, 78%, ${alpha * 0.22})`;
-          ctx.arc(px, py, r * 3.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.beginPath();
-        ctx.fillStyle = `hsla(${s.hue}, 92%, ${64 + depth * 20}%, ${alpha})`;
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = (s.hue === 262 ? PALETTE_N : PALETTE)[level];
+        // fillRect es mucho más rápido que arc+fill; a este tamaño se ve igual
+        ctx.fillRect(px - r, py - r, r * 2, r * 2);
       }
     };
 
@@ -124,6 +124,11 @@ export default function Atmosphere({ dense = false, fixed = false }: { dense?: b
 
     const draw = () => {
       if (!running) return;
+      // Si el equipo no sostiene ~50fps, baja la densidad una sola vez
+      if (quality === 1 && ++frames === 90) {
+        const fps = 90000 / (performance.now() - lastCheck);
+        if (fps < 45) { quality = 0.5; resize(); }
+      }
       t += 0.008;
       cam.x += (target.x - cam.x) * 0.045;
       cam.y += (target.y - cam.y) * 0.045;
@@ -154,24 +159,20 @@ export default function Atmosphere({ dense = false, fixed = false }: { dense?: b
 
   return (
     <div aria-hidden className={`${fixed ? 'fixed' : 'absolute'} pointer-events-none inset-0 z-0 overflow-hidden`}>
-      {/* Degradado base */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(79,140,255,0.14),transparent_60%)]" />
-      {/* Aurora giratoria muy sutil */}
+      {/* Luces volumétricas: degradados radiales (sin filtro blur → coste casi nulo) */}
       <div
-        className="absolute left-1/2 top-[-42%] h-[95rem] w-[95rem] -translate-x-1/2 animate-[spin_150s_linear_infinite] rounded-full opacity-[0.08] mix-blend-screen blur-3xl motion-reduce:animate-none"
-        style={{ background: 'conic-gradient(from 0deg, transparent 0deg, rgba(79,140,255,0.55) 55deg, transparent 130deg, rgba(139,108,240,0.5) 215deg, transparent 300deg)' }}
+        className="absolute inset-0"
+        style={{
+          backgroundImage: [
+            'radial-gradient(ellipse 80% 55% at 50% -10%, rgba(79,140,255,0.13), transparent 60%)',
+            'radial-gradient(circle 32rem at -6% 28%, rgba(79,140,255,0.10), transparent 65%)',
+            'radial-gradient(circle 30rem at 106% 6%, rgba(139,108,240,0.10), transparent 65%)',
+            'radial-gradient(circle 26rem at 38% 108%, rgba(79,140,255,0.07), transparent 65%)',
+          ].join(','),
+        }}
       />
-      {/* Luces volumétricas */}
-      <div className="absolute -left-40 top-1/4 h-[34rem] w-[34rem] animate-drift rounded-full bg-electric/[0.10] blur-[130px] motion-reduce:animate-none" />
-      <div className="absolute -right-52 top-8 h-[30rem] w-[30rem] animate-drift rounded-full bg-nebula/[0.10] blur-[130px] [animation-delay:-12s] motion-reduce:animate-none" />
-      <div className="absolute bottom-[-10rem] left-1/3 h-[26rem] w-[26rem] animate-pulse-soft rounded-full bg-electric/[0.06] blur-[120px] motion-reduce:animate-none" />
       {/* Estrellas 3D */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      {/* Grano fílmico (evita bandas en los degradados) */}
-      <div
-        className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")` }}
-      />
       {/* Niebla inferior */}
       <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-ink via-ink/70 to-transparent" />
     </div>
